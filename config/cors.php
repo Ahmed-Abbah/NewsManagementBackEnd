@@ -7,7 +7,7 @@ return [
     |----------------------------------------------------------------------
     */
 
-    'paths' => ['*', 'api/*', 'sanctum/csrf-cookie', 'http://127.0.0.1:4200', 'http://localhost:4200/*'], 
+    'paths' => ['*'], 
 
     'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Make sure OPTIONS is included
 
@@ -17,9 +17,9 @@ return [
 
     'allowed_headers' => ['*'], // Make sure to allow all headers or specific headers if necessary
 
-    'exposed_headers' => [],
+    'exposed_headers' => ['*'],
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 ];

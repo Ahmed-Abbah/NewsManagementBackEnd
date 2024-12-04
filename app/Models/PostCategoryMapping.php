@@ -11,7 +11,8 @@ class PostCategoryMapping extends Model
 
     // Define the table explicitly if it doesn't follow Laravel's naming convention
     protected $table = 'post_category_mapping';
-
+    protected $primaryKey = 'CategoryId';       // Define the primary key if it's not `id`
+    public $timestamps = false;
     // Define fillable fields for mass assignment
     protected $fillable = [
         'PostTitle',
@@ -19,7 +20,4 @@ class PostCategoryMapping extends Model
         'CategoryName',
         'CategoryId',
     ];
-
-    // Disable timestamps if not used in the table
-    public $timestamps = false;
 }

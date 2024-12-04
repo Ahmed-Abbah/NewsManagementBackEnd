@@ -11,7 +11,6 @@ class Post extends Model
 
     // Explicitly specify the table name (optional if naming conventions are followed)
     protected $table = 'www_posts';
-
     // Define fillable fields for mass assignment
     protected $fillable = [
         'post_author',
@@ -36,6 +35,7 @@ class Post extends Model
         'post_type',
         'post_mime_type',
         'comment_count',
+        'view_count'
     ];
 }
 

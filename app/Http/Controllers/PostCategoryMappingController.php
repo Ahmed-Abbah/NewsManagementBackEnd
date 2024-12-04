@@ -41,6 +41,19 @@ class PostCategoryMappingController extends Controller
         return response()->json($mapping);
     }
 
+    public function getPostCatgeories($postId)
+    {
+        $mapping = PostCategoryMapping::where('PostId', $postId)
+
+            ->get();
+
+        if (!$mapping) {
+            return [];
+        }
+
+        return $mapping;
+    }
+
     // Update a mapping
     public function update(Request $request, $postId, $categoryId)
     {
