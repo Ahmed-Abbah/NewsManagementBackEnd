@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::get('posts/create', [PostController::class, 'create']);
     Route::post('posts', [PostController::class, 'store']);
     Route::post('saveImage', [PostController::class, 'storeImage']);
+    Route::post('savePostTranslation', [PostController::class, 'storeTranslatedPost']);
     Route::post('categories', [CategoryController::class, 'store']); // Create a new category
     Route::put('categories/{id}', [CategoryController::class, 'update']); // Update a category
     Route::delete('categories/{id}', [CategoryController::class, 'destroy']); // Delete a category

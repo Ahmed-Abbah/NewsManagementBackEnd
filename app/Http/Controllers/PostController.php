@@ -112,10 +112,8 @@ class PostController extends Controller
 {     
 
 
-    return response()->json([
-        'error' => 'Validation failed',
+   
 
-    ], 500);
     try{
         Log::info('Received Post data:', $request->all());
 
@@ -131,7 +129,7 @@ class PostController extends Controller
     // Collect user-friendly error messages for missing fields
     $missingMessages = [];
     foreach ($rules as $field => $friendlyName) {
-        if (!$request->has($field) || empty($request->input($field))) {
+        if (!$request->has($field) ) {
             $missingMessages[] = "The field '$friendlyName' is required.";
         }
     }
@@ -143,15 +141,6 @@ class PostController extends Controller
             'messages' => $missingMessages,
         ], 422);
     }
-
-
-    $request->validate([
-        'post_title' => 'required|string',
-        'post_content' => 'required|string',
-        'post_status' => 'required|string|max:255',
-        'post_type' => 'required|string|max:255',
-        'guid' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-    ]);
  
     $imageUrl = null;
  
@@ -168,6 +157,11 @@ class PostController extends Controller
         
         // Generate the full URL to the stored file
         $imageUrl = url('storage/' . $path);
+    }else{
+        return response()->json([
+            'error' => 'Validation failed',
+            'messages' => 'post should have an image',
+        ], 422);
     }
 
     // If post_excerpt is not provided, use the post_title as the excerpt
@@ -241,7 +235,8 @@ class PostController extends Controller
     return response()->json([
         'message' => 'Post created successfully',
         'data' => [
-            'post_id' => $postId
+            'post_id' => $postId,
+            'image_id'=>$fullPost->image_id
         ],
     ], 201);
 
@@ -252,6 +247,103 @@ class PostController extends Controller
         ], 500);
     }
 }
+
+public function storeTranslatedPost(Request $request)
+{
+    try {
+        Log::info('Received Translated Post data:', $request->all());
+
+        // Define required fields with user-friendly names
+        $rules = [
+            'post_title' => 'Post Title',
+            'post_content' => 'Post Content',
+            'image_id' => 'Image',
+        ];
+
+        // Collect user-friendly error messages for missing fields
+        $missingMessages = [];
+        foreach ($rules as $field => $friendlyName) {
+            if (!$request->has($field) || empty($request->input($field))) {
+                $missingMessages[] = "The field '$friendlyName' is required.";
+            }
+        }
+
+        // If any fields are missing, return a validation error response
+        if (!empty($missingMessages)) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'messages' => $missingMessages,
+            ], 422);
+        }
+
+        // Use post_title as the excerpt if post_excerpt is not provided
+        $postExcerpt = $request->input('post_excerpt') ?: $request->input('post_title');
+
+        // Insert the post into the database
+        DB::insert(
+            "INSERT INTO www_posts (post_title, post_content, post_excerpt, post_status, post_type, image_id, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
+            VALUES (:post_title, :post_content, :post_excerpt, :post_status, :post_type, :image_id, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
+            [
+                'post_title' => $request->input('post_title'),
+                'post_content' => $request->input('post_content'),
+                'post_excerpt' => $postExcerpt,
+                'post_status' => $request->input('post_status') ?: 'draft',
+                'post_type' => 'post',
+                'image_id' => $request->input('image_id'),
+                'to_ping' => 'www.maroc-leaks.com',
+                'post_content_filtered' => 'MarocLeaksV2',
+                'ping_status' => 'open',
+                'pinged' => 'www.maroc-leaks.com',
+                'guid' => '', // Replace with appropriate GUID if needed
+            ]
+        );
+
+        // Retrieve the last inserted post ID
+        $postId = DB::getPdo()->lastInsertId();
+
+        // Retrieve the full post record
+        $fullPost = DB::table('www_posts')->where('id', $postId)->first();
+
+        // Validate if categories exist in the request
+        if ($request->has('categories') && is_array($request->input('categories'))) {
+            foreach ($request->input('categories') as $catId) {
+                // Retrieve the full category details
+                $fullCategory = DB::table('www_terms')->where('term_id', $catId)->first();
+
+                if ($fullCategory) {
+                    // Insert the category mapping
+                    DB::insert(
+                        "INSERT INTO post_category_mapping (PostTitle, PostId, CategoryName, CategoryId) 
+                        VALUES (:PostTitle, :PostId, :CategoryName, :CategoryId)",
+                        [
+                            'PostTitle' => $fullPost->post_title,
+                            'PostId' => $postId,
+                            'CategoryName' => $fullCategory->name,
+                            'CategoryId' => $catId,
+                        ]
+                    );
+                }
+            }
+        }
+
+        // Return a success response with the post ID
+        return response()->json([
+            'message' => 'Post Translation created successfully',
+            'data' => [
+                'post_id' => $postId,
+            ],
+        ], 201);
+
+    } catch (Exception $e) {
+        // Log the error and return an internal server error response
+        Log::error('Error while storing translated post:', ['exception' => $e]);
+        return response()->json([
+            'message' => 'Internal Error',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
 
      
 
