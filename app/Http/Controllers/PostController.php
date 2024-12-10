@@ -123,6 +123,8 @@ class PostController extends Controller
         'post_content' => 'Post Content',
         'post_status' => 'Post Status',
         'post_type' => 'Post Type',
+        'post_excerpt' => 'Post Excerpt',
+        'post_name' => 'Post Slug',
         'guid' => 'Image',
     ];
 
@@ -164,17 +166,18 @@ class PostController extends Controller
         ], 422);
     }
 
-    // If post_excerpt is not provided, use the post_title as the excerpt
-    $postExcerpt = $request->input('post_excerpt') ?: $request->input('post_title');
 
+    $postExcerpt = $request->input('post_excerpt') . 'post_image';
+    $postSlug = $request->input('post_name') . '_post_image';
     // Insert the post Image as post record where the post_type takes "attachmnt" data into the database
     DB::insert(
-        "INSERT INTO www_posts (post_title, post_content, post_excerpt, post_status, post_type, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
-        VALUES (:post_title, :post_content, :post_excerpt, :post_status, :post_type, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
+        "INSERT INTO www_posts (post_title, post_content, post_excerpt,post_name,post_status, post_type, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
+        VALUES (:post_title, :post_content, :post_excerpt,:post_name, :post_status, :post_type, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
         [
             'post_title' => $request->input('post_title'),
             'post_content' => $request->input('post_content'),
             'post_excerpt' => $postExcerpt,
+            'post_name' => $postSlug,
             'post_status' => $request->input('post_status'),
             'post_type' => "attachment",
             'to_ping' => "www.maroc-leaks.com",
@@ -190,12 +193,13 @@ class PostController extends Controller
 
     // Insert the post Image as post record where the post_type takes "attachmnt" data into the database
     DB::insert(
-        "INSERT INTO www_posts (post_title, post_content, post_excerpt, post_status, post_type,image_id, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
-        VALUES (:post_title, :post_content, :post_excerpt, :post_status, :post_type,:image_id, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
+        "INSERT INTO www_posts (post_title, post_content, post_excerpt,post_name, post_status, post_type,image_id, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
+        VALUES (:post_title, :post_content, :post_excerpt,:post_name, :post_status, :post_type,:image_id, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
         [
             'post_title' => $request->input('post_title'),
             'post_content' => $request->input('post_content'),
-            'post_excerpt' => $postExcerpt,
+            'post_excerpt' => $request->input('post_excerpt'),
+            'post_name' => $request->input('post_name'),
             'post_status' => $request->input('post_status'),
             'post_type' => "post",
             'to_ping' => "www.maroc-leaks.com",
@@ -257,6 +261,8 @@ public function storeTranslatedPost(Request $request)
         $rules = [
             'post_title' => 'Post Title',
             'post_content' => 'Post Content',
+            'post_name' => 'Post Slug',
+            'post_excerpt' => 'Post Excerpt',
             'image_id' => 'Image',
         ];
 
@@ -276,17 +282,17 @@ public function storeTranslatedPost(Request $request)
             ], 422);
         }
 
-        // Use post_title as the excerpt if post_excerpt is not provided
-        $postExcerpt = $request->input('post_excerpt') ?: $request->input('post_title');
-
+        $postExcerpt = $request->input('post_excerpt');
+        $postSlug = $request->input('post_name') ;
         // Insert the post into the database
         DB::insert(
-            "INSERT INTO www_posts (post_title, post_content, post_excerpt, post_status, post_type, image_id, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
-            VALUES (:post_title, :post_content, :post_excerpt, :post_status, :post_type, :image_id, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
+            "INSERT INTO www_posts (post_title, post_content, post_excerpt,post_name, post_status, post_type, image_id, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
+            VALUES (:post_title, :post_content, :post_excerpt,:post_name, :post_status, :post_type, :image_id, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
             [
                 'post_title' => $request->input('post_title'),
                 'post_content' => $request->input('post_content'),
                 'post_excerpt' => $postExcerpt,
+                'post_name' => $postSlug,
                 'post_status' => $request->input('post_status') ?: 'draft',
                 'post_type' => 'post',
                 'image_id' => $request->input('image_id'),
@@ -363,6 +369,41 @@ public function storeTranslatedPost(Request $request)
     // Fetch the post along with its image (if any)
     $post = DB::table('www_posts')
               ->where('id', $id)
+              ->first();
+
+    // Check if the post has an image_id and fetch the image details
+    if ($post && $post->image_id) {
+        $attachment = DB::table('www_posts')
+                        ->where('id', $post->image_id)
+                        ->first();
+
+        // Store the image path (GUID) in the post's guid field
+        $post->guid = $attachment->guid ?? null;
+    } else {
+        $post->guid = null; // If there's no image, set guid to null
+    }
+
+    $categories = PostCategoryMapping::where('PostId', $post->ID)->get();
+    
+            // Log each query and the results
+            Log::info("Fetching categories for PostId: {$post->ID}");
+            Log::info("Categories found: " . json_encode($categories));
+            $post->categories = $categories;
+
+    // Return the post as a JSON response with the updated data
+    return response()->json($post);
+}
+
+public function getPostBySlug($slug)
+{
+    // Increment the view_count for the specific post
+    DB::table('www_posts')
+        ->where('post_name', $slug)
+        ->increment('view_count');
+    
+    // Fetch the post along with its image (if any)
+    $post = DB::table('www_posts')
+              ->where('post_name', $slug)
               ->first();
 
     // Check if the post has an image_id and fetch the image details
@@ -492,6 +533,7 @@ public function storeTranslatedPost(Request $request)
                      ->where('post_type', 'post')
                      ->where('post_status', 'publish') // Filter for post_type = 'post'
                      ->orderBy('post_date', 'desc') // Order by post_date (most recent first)
+                     ->orderBy('view_count','desc')
                      ->take(20) // Limit to the 10 latest posts
                      ->get();
     

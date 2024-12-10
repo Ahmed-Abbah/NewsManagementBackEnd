@@ -25,6 +25,7 @@ Route::get('posts/topPosts', [PostController::class, 'getTopPostsBasedOnViews'])
 Route::get('posts/postsByCategory/{categoryName}', [PostController::class, 'getPostsByCategory']);
 Route::get('/post-category-mappings/postCategories/{postId}', [PostCategoryMappingController::class, 'getPostCatgeories']);
 Route::get('posts/{post}', [PostController::class, 'show']);
+Route::get('post/slug/{slug}', [PostController::class, 'getPostBySlug']);
 //Routes accessible only after successful authentication
 Route::middleware('auth:sanctum')->group(function(){
     Route::get('posts/create', [PostController::class, 'create']);
