@@ -7,6 +7,7 @@ use App\Models\Post;
 use App\Models\PostCategoryMapping;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use DB;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -110,12 +111,8 @@ class PostController extends Controller
 
      public function storeImage(Request $request)
 {     
-
-
-   
-
     try{
-        Log::info('Received Post data:', $request->all());
+        //Log::info('Received Post data:', $request->all());
 
     // Define required fields with user-friendly names
     $rules = [
@@ -126,6 +123,7 @@ class PostController extends Controller
         'post_excerpt' => 'Post Excerpt',
         'post_name' => 'Post Slug',
         'guid' => 'Image',
+        'categories' => 'Categories',
     ];
 
     // Collect user-friendly error messages for missing fields
@@ -167,8 +165,8 @@ class PostController extends Controller
     }
 
 
-    $postExcerpt = $request->input('post_excerpt') . 'post_image';
-    $postSlug = $request->input('post_name') . '_post_image';
+    $postExcerpt = $request->input('post_excerpt') ;
+    $postSlug = $request->input('post_name') ;
     // Insert the post Image as post record where the post_type takes "attachmnt" data into the database
     DB::insert(
         "INSERT INTO www_posts (post_title, post_content, post_excerpt,post_name,post_status, post_type, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
@@ -255,7 +253,7 @@ class PostController extends Controller
 public function storeTranslatedPost(Request $request)
 {
     try {
-        Log::info('Received Translated Post data:', $request->all());
+        //Log::info('Received Translated Post data:', $request->all());
 
         // Define required fields with user-friendly names
         $rules = [
@@ -264,6 +262,7 @@ public function storeTranslatedPost(Request $request)
             'post_name' => 'Post Slug',
             'post_excerpt' => 'Post Excerpt',
             'image_id' => 'Image',
+            
         ];
 
         // Collect user-friendly error messages for missing fields
@@ -394,40 +393,43 @@ public function storeTranslatedPost(Request $request)
     return response()->json($post);
 }
 
-public function getPostBySlug($slug)
-{
-    // Increment the view_count for the specific post
-    DB::table('www_posts')
-        ->where('post_name', $slug)
-        ->increment('view_count');
+// public function getPostBySlug($slug)
+// {
     
-    // Fetch the post along with its image (if any)
-    $post = DB::table('www_posts')
-              ->where('post_name', $slug)
-              ->first();
-
-    // Check if the post has an image_id and fetch the image details
-    if ($post && $post->image_id) {
-        $attachment = DB::table('www_posts')
-                        ->where('id', $post->image_id)
-                        ->first();
-
-        // Store the image path (GUID) in the post's guid field
-        $post->guid = $attachment->guid ?? null;
-    } else {
-        $post->guid = null; // If there's no image, set guid to null
-    }
-
-    $categories = PostCategoryMapping::where('PostId', $post->ID)->get();
     
-            // Log each query and the results
-            Log::info("Fetching categories for PostId: {$post->ID}");
-            Log::info("Categories found: " . json_encode($categories));
-            $post->categories = $categories;
+//     // Fetch the post along with its image (if any)
+//     $post = DB::table('www_posts')
+//               ->where('post_name', $slug)
+//               ->first();
+//     $view_count = $post -> view_count;
+//     $view_count++;
+//     DB::update("update www_post set view_count = view_count + 1 where post_name=:post_name",[
+//         'post_name'=>$slug
+//     ]);
 
-    // Return the post as a JSON response with the updated data
-    return response()->json($post);
-}
+
+//     // Check if the post has an image_id and fetch the image details
+//     if ($post && $post->image_id) {
+//         $attachment = DB::table('www_posts')
+//                         ->where('id', $post->image_id)
+//                         ->first();
+
+//         // Store the image path (GUID) in the post's guid field
+//         $post->guid = $attachment->guid ?? null;
+//     } else {
+//         $post->guid = null; // If there's no image, set guid to null
+//     }
+
+//     $categories = PostCategoryMapping::where('PostId', $post->ID)->get();
+    
+//             // Log each query and the results
+//             Log::info("Fetching categories for PostId: {$post->ID}");
+//             Log::info("Categories found: " . json_encode($categories));
+//             $post->categories = $categories;
+
+//     // Return the post as a JSON response with the updated data
+//     return response()->json($post);
+// }
 
 
 
@@ -450,7 +452,37 @@ public function getPostBySlug($slug)
     // }
 
 
-    public function getTopPostsBasedOnViews()
+
+
+    public function getPostBySlug($slug)
+    {
+        // Use a single query to fetch the post and its associated image details
+        $post = DB::table('www_posts as p')
+            ->leftJoin('www_posts as a', 'p.image_id', '=', 'a.id') // Join for image details
+            ->select('p.*', 'a.guid as image_guid') // Select post and image details
+            ->where('p.post_name', $slug)
+            ->first();
+    
+        // Handle case when the post is not found
+        if (!$post) {
+            return response()->json(['error' => 'Post not found'], 404);
+        }
+    
+        // Increment view count in a single query
+        DB::statement("UPDATE www_posts SET view_count = view_count + 1 WHERE post_name = ?", [$slug]);
+    
+        // Attach the image GUID to the post object
+        $post->guid = $post->image_guid;
+        unset($post->image_guid); // Remove intermediate field
+    
+        // Fetch categories associated with the post
+        $categories = PostCategoryMapping::where('PostId', $post->ID)->get();
+        $post->categories = $categories;
+    
+        // Return the post as a JSON response
+        return response()->json($post);
+    }
+        public function getTopPostsBasedOnViews()
     {
         $posts = Post::where('post_mime_type', 'like', '%image%')
             ->orderByDesc('post_date')
@@ -525,32 +557,79 @@ public function getPostBySlug($slug)
         return response()->json(['message' => 'Post deleted successfully']);
     }
 
+    // public function getLatestPosts()
+    // {
+    //     // Fetch the latest 10 posts with valid post_title and post_type 'post'
+    //     $posts = Post::whereNotNull('post_title') // Ensure post_title is not null
+    //                  ->where('post_title', '!=', '') // Ensure post_title is not empty
+    //                  ->where('post_type', 'post')
+    //                  ->where('post_status', 'publish') // Filter for post_type = 'post'
+    //                  ->orderBy('post_date', 'desc') // Order by post_date (most recent first)
+    //                  ->orderBy('view_count','desc')
+    //                  ->take(20) // Limit to the 10 latest posts
+    //                  ->get();
+    
+    //     foreach ($posts as $post) {
+    //         // Fetch the attachment for the post
+    //         $attachment = Post::where('id', $post->image_id)->first();
+    //         $post->guid = $attachment->guid ?? null; // Attach guid if available
+    
+    //         // Fetch categories for the post
+    //         $categories = PostCategoryMapping::where('PostId', $post->ID)->get();
+    //         $post->categories = $categories->isNotEmpty() ? $categories : []; // Attach categories or default to empty array
+    //     }
+    
+    //     return response()->json($posts);
+    // }
+
+
+
+
+
     public function getLatestPosts()
     {
-        // Fetch the latest 10 posts with valid post_title and post_type 'post'
-        $posts = Post::whereNotNull('post_title') // Ensure post_title is not null
-                     ->where('post_title', '!=', '') // Ensure post_title is not empty
-                     ->where('post_type', 'post')
-                     ->where('post_status', 'publish') // Filter for post_type = 'post'
-                     ->orderBy('post_date', 'desc') // Order by post_date (most recent first)
-                     ->orderBy('view_count','desc')
-                     ->take(20) // Limit to the 10 latest posts
-                     ->get();
+        // Check if cached data is available
+        $posts = Cache::remember('latest_posts', now()->addMinutes(0), function () {
+            // Fetch the latest 20 posts with valid post_title and post_type 'post'
+            $posts = Post::whereNotNull('post_title') // Ensure post_title is not null
+                         ->where('post_title', '!=', '') // Ensure post_title is not empty
+                         ->where('post_type', 'post')
+                         ->where('post_status', 'publish') // Filter for post_type = 'post'
+                         ->orderBy('post_date', 'desc') // Order by post_date (most recent first)
+                         ->orderBy('view_count', 'desc') // Order by view_count (most viewed first)
+                         ->take(30) // Limit to the 10 latest posts
+                         ->get();
     
-        foreach ($posts as $post) {
-            // Fetch the attachment for the post
-            $attachment = Post::where('id', $post->image_id)->first();
-            $post->guid = $attachment->guid ?? null; // Attach guid if available
+            // Get the Post IDs to query the categories for those posts
+            $postIds = $posts->pluck('ID');
     
-            // Fetch categories for the post
-            $categories = PostCategoryMapping::where('PostId', $post->ID)->get();
-            $post->categories = $categories->isNotEmpty() ? $categories : []; // Attach categories or default to empty array
-        }
+            // Fetch categories related to the posts in one query
+            $categoryMappings = PostCategoryMapping::whereIn('PostId', $postIds)
+                                                   ->get();
     
+            // Group categories by PostId
+            $categoriesMap = $categoryMappings->groupBy('PostId');
+    
+            // Attach categories and guid to each post
+            foreach ($posts as $post) {
+                // Fetch the attachment for the post image
+                $attachment = Post::where('ID', $post->image_id)->first();
+                $post->guid = $attachment ? $attachment->guid : null; // Attach guid if available
+    
+                // Get categories for the current post using the categoriesMap
+                $post->categories = $categoriesMap->get($post->ID, collect())->values(); // Use collect() to return an empty collection if no categories are found
+            }
+    
+            return $posts;
+        });
+    
+        // Return the posts along with their categories
         return response()->json($posts);
     }
+    
 
-
+    
+    
     public function getPostsByCategory($categoryName)
     {
         // Retrieve the Post IDs for the given category name
