@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use DB;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use App\Events\PostCreated;
 class PostController extends Controller
 {
     /**
@@ -143,7 +144,8 @@ class PostController extends Controller
     }
  
     $imageUrl = null;
- 
+    
+    
     // Handle the image upload if it exists
     if ($request->hasFile('guid')) {
         // Get the original file extension
@@ -232,6 +234,10 @@ class PostController extends Controller
         ]
     );
     }
+
+    
+
+    $this->refreshCache();
     
     // Return a response with the post ID
     return response()->json([
@@ -330,7 +336,7 @@ public function storeTranslatedPost(Request $request)
                 }
             }
         }
-
+        $this->refreshCache();
         // Return a success response with the post ID
         return response()->json([
             'message' => 'Post Translation created successfully',
@@ -588,8 +594,13 @@ public function storeTranslatedPost(Request $request)
 
     public function getLatestPosts()
     {
+        $cacheKey = 'latest_posts';
+
+    // Check if cache exists
+    $cachedPosts = Cache::get($cacheKey);
+    Log::info('Cache before fetching:', ['cached_posts' => $cachedPosts]);
         // Check if cached data is available
-        $posts = Cache::remember('latest_posts', now()->addMinutes(0), function () {
+        $posts = Cache::remember('latest_posts', now()->addMinutes(60*24*7), function () {
             // Fetch the latest 20 posts with valid post_title and post_type 'post'
             $posts = Post::whereNotNull('post_title') // Ensure post_title is not null
                          ->where('post_title', '!=', '') // Ensure post_title is not empty
@@ -625,6 +636,49 @@ public function storeTranslatedPost(Request $request)
     
         // Return the posts along with their categories
         return response()->json($posts);
+    }
+
+    public function refreshCache()
+    {
+        $cacheKey = 'latest_posts';
+
+    // Check if cache exists
+    $cachedPosts = Cache::forget($cacheKey);
+    //Log::info('Cache before fetching:', ['cached_posts' => $cachedPosts]);
+        // Check if cached data is available
+        $posts = Cache::remember('latest_posts', now()->addMinutes(60*24*7), function () {
+            // Fetch the latest 20 posts with valid post_title and post_type 'post'
+            $posts = Post::whereNotNull('post_title') // Ensure post_title is not null
+                         ->where('post_title', '!=', '') // Ensure post_title is not empty
+                         ->where('post_type', 'post')
+                         ->where('post_status', 'publish') // Filter for post_type = 'post'
+                         ->orderBy('post_date', 'desc') // Order by post_date (most recent first)
+                         ->orderBy('view_count', 'desc') // Order by view_count (most viewed first)
+                         ->take(30) // Limit to the 10 latest posts
+                         ->get();
+    
+            // Get the Post IDs to query the categories for those posts
+            $postIds = $posts->pluck('ID');
+    
+            // Fetch categories related to the posts in one query
+            $categoryMappings = PostCategoryMapping::whereIn('PostId', $postIds)
+                                                   ->get();
+    
+            // Group categories by PostId
+            $categoriesMap = $categoryMappings->groupBy('PostId');
+    
+            // Attach categories and guid to each post
+            foreach ($posts as $post) {
+                // Fetch the attachment for the post image
+                $attachment = Post::where('ID', $post->image_id)->first();
+                $post->guid = $attachment ? $attachment->guid : null; // Attach guid if available
+    
+                // Get categories for the current post using the categoriesMap
+                $post->categories = $categoriesMap->get($post->ID, collect())->values(); // Use collect() to return an empty collection if no categories are found
+            }
+    
+            return $posts;
+        });
     }
     
 

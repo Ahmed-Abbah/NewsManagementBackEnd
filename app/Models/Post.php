@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+use App\Events\PostCreated;
 class Post extends Model
 {
     use HasFactory;
@@ -37,5 +37,14 @@ class Post extends Model
         'comment_count',
         'view_count'
     ];
+
+    protected static function booted()
+    {
+        static::created(function ($post) {
+            // Dispatch the event when a post is created
+            \Log::info('Post Created Event Triggered', ['post_id' => $post->id]);
+            event(new PostCreated($post));
+        });
+    }
 }
 

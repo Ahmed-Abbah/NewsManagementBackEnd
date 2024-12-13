@@ -22,19 +22,44 @@ class AuthController extends Controller
     }
 
     public function user(){
-        return Auth::user();
+        if(Auth::user()->getStatus() == 'enabled'){
+            return Auth::user();
+        }
     }
 
-    public function login(Request $request){
-        if(!Auth::attempt($request->only('email','password'))){
-            return response(['message'=>'Invalid Credentials!'],Response::HTTP_UNAUTHORIZED);
+    // public function login(Request $request){
+    //     if(!Auth::attempt($request->only('email','password'))){
+    //         return response(['message'=>'Invalid Credentials!'],Response::HTTP_UNAUTHORIZED);
+    //     }
+    //     $user = Auth::user();
+    //     $token = $user -> createToken('JwtToken')->plainTextToken;
+    //     // $cookie = cookie('jwt',$token,60*24);
+    //     // return response(['message' => 'Success','jwt' => $token])->withCookie($cookie) ; 
+    //     return response(['user' => $user,'jwt' => $token]); 
+    // }
+
+
+    public function login(Request $request) {
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            return response(['message' => 'Invalid Credentials!'], Response::HTTP_UNAUTHORIZED);
         }
+    
         $user = Auth::user();
-        $token = $user -> createToken('JwtToken')->plainTextToken;
-        // $cookie = cookie('jwt',$token,60*24);
-        // return response(['message' => 'Success','jwt' => $token])->withCookie($cookie) ; 
-        return response(['user' => $user,'jwt' => $token]); 
+        $token = $user->createToken('JwtToken')->plainTextToken;
+    
+        // Get expiration time in minutes from config/sanctum.php
+        $expirationMinutes = config('sanctum.expiration');
+    
+        // Calculate the expiration timestamp (null if no expiration is set)
+        $expiresAt = $expirationMinutes ? now()->addMinutes($expirationMinutes) : null;
+    
+        return response([
+            'user' => $user,
+            'jwt' => $token,
+            'exp' => $expiresAt ? $expiresAt->timestamp : null, // Return UNIX timestamp
+        ]);
     }
+    
 
 
 
