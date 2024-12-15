@@ -7,11 +7,10 @@ use App\Models\Post;
 use App\Models\PostCategoryMapping;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Exception;
 use Illuminate\Support\Facades\Cache;
 use DB;
-use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-use App\Events\PostCreated;
+
 class PostController extends Controller
 {
     /**
@@ -166,6 +165,12 @@ class PostController extends Controller
         ], 422);
     }
 
+    if($request->input('lng')){
+        $lng = $request->input('lng');
+    }else{
+        Log::info('No Post Language detected');
+    }
+
 
     $postExcerpt = $request->input('post_excerpt') ;
     $postSlug = $request->input('post_name') ;
@@ -181,7 +186,7 @@ class PostController extends Controller
             'post_status' => $request->input('post_status'),
             'post_type' => "attachment",
             'to_ping' => "www.maroc-leaks.com",
-            'post_content_filtered' => $request->input('post_title'),
+            'post_content_filtered' => $lng,
             'pinged' => "www.maroc-leaks.com",
             'ping_status' => "open",
             'guid' => $imageUrl,
@@ -203,7 +208,7 @@ class PostController extends Controller
             'post_status' => $request->input('post_status'),
             'post_type' => "post",
             'to_ping' => "www.maroc-leaks.com",
-            'post_content_filtered' => "MarocLeaksV2",
+            'post_content_filtered' => $lng,
             'pinged' => "www.maroc-leaks.com",
             'ping_status' => "open",
             'guid' => $imageUrl,
@@ -249,6 +254,7 @@ class PostController extends Controller
     ], 201);
 
     }catch(Exception $e){
+        Log::error($e->getMessage());
         return response()->json([
             'message' => 'Internal Error',
             'error' => $e->getMessage()
@@ -257,7 +263,9 @@ class PostController extends Controller
 }
 
 public function storeTranslatedPost(Request $request)
-{
+{   
+
+
     try {
         //Log::info('Received Translated Post data:', $request->all());
 
@@ -287,13 +295,21 @@ public function storeTranslatedPost(Request $request)
             ], 422);
         }
 
+        if($request->input('lng')){
+            $lng = $request->input('lng');
+        }else{
+            Log::info('No Post Language detected');
+            $lng="No lng detected";
+        }
+
         $postExcerpt = $request->input('post_excerpt');
         $postSlug = $request->input('post_name') ;
         // Insert the post into the database
         DB::insert(
-            "INSERT INTO www_posts (post_title, post_content, post_excerpt,post_name, post_status, post_type, image_id, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
-            VALUES (:post_title, :post_content, :post_excerpt,:post_name, :post_status, :post_type, :image_id, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
+            "INSERT INTO www_posts (post_parent,post_title, post_content, post_excerpt,post_name, post_status, post_type, image_id, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
+            VALUES (:post_parent,:post_title, :post_content, :post_excerpt,:post_name, :post_status, :post_type, :image_id, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
             [
+                'post_parent' => $request->input('post_parent'),
                 'post_title' => $request->input('post_title'),
                 'post_content' => $request->input('post_content'),
                 'post_excerpt' => $postExcerpt,
@@ -302,12 +318,14 @@ public function storeTranslatedPost(Request $request)
                 'post_type' => 'post',
                 'image_id' => $request->input('image_id'),
                 'to_ping' => 'www.maroc-leaks.com',
-                'post_content_filtered' => 'MarocLeaksV2',
+                'post_content_filtered' => $lng,
                 'ping_status' => 'open',
                 'pinged' => 'www.maroc-leaks.com',
                 'guid' => '', // Replace with appropriate GUID if needed
             ]
         );
+
+        
 
         // Retrieve the last inserted post ID
         $postId = DB::getPdo()->lastInsertId();
