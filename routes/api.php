@@ -1,4 +1,5 @@
 <?php
+use App\Http\Middleware\LogGeolocation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -11,12 +12,15 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-
+Route::get('/posts/latest', function () {
+    
+})->middleware(LogGeolocation::class);
 
 //Public routes 
 Route::get('categories', [CategoryController::class, 'index']); // Get all categories
 Route::get('/post-category-mappings', [PostCategoryMappingController::class, 'index']);
 Route::get('posts', [PostController::class, 'index']);
+Route::get('posts/ipinfo', [PostController::class, 'getRegionFromIp']);
 Route::get('/posts/latest',[PostController::class,'getLatestPosts']);
 Route::get('/posts/topCategories',[PostController::class,'getTopCategories']);
 Route::post('/register',[AuthController::class,'register']);

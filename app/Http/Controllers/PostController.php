@@ -11,7 +11,7 @@ use Exception;
 use Illuminate\Support\Facades\Cache;
 use App\Models\IpInfo;
 use DB;
-
+use Illuminate\Support\Facades\Http;
 class PostController extends Controller
 {
     /**
@@ -538,6 +538,63 @@ public function storeTranslatedPost(Request $request)
         //
     }
 
+    public function getRegionFromIp()
+    {
+        $ipAddress = request()->ip();
+    
+        // Check if the IP's geolocation is cached
+        $geoData = Cache::remember("geo_ip_{$ipAddress}", now()->addMinutes(30), function () use ($ipAddress) {
+            // Make a request to GeoJS API to get geolocation information
+            $response = Http::get("https://get.geojs.io/v1/ip/geo.json");
+    
+            if ($response->successful()) {
+                return $response->json();
+            }
+            return null;  // In case of failure
+        });
+    
+        if ($geoData) {
+            // Extract geolocation details
+            $region = $geoData['region'];
+            $country = $geoData['country'];
+            $city = $geoData['city'];
+            $countryCode = $geoData['countryCode'];
+            $status = 'success'; // Status of the geolocation request
+            $isp = $geoData['isp'] ?? 'N/A'; // ISP info (if available)
+            $lat = $geoData['lat'] ?? null; // Latitude (if available)
+            $lon = $geoData['lon'] ?? null; // Longitude (if available)
+            $org = $geoData['org'] ?? 'N/A'; // Organization info (if available)
+            $timezone = $geoData['timezone'] ?? 'N/A'; // Timezone info (if available)
+            $zip = $geoData['zip'] ?? 'N/A'; // ZIP code (if available)
+    
+            // Log the data in the IpInfo table
+            IpInfo::create([
+                'status' => $status,
+                'country' => $country,
+                'countryCode' => $countryCode,
+                'region' => $region,
+                'regionName' => $region,  // You can add a more specific field if needed
+                'city' => $city,
+                'isp' => $isp,
+                'lat' => $lat,
+                'lon' => $lon,
+                'org' => $org,
+                'query' => $ipAddress,
+                'timezone' => $timezone,
+                'zip' => $zip
+            ]);
+    
+            return response()->json([
+                'ip' => $ipAddress,
+                'region' => $region,
+                'country' => $country,
+                'city' => $city,
+            ]);
+        } else {
+            return response()->json(['error' => 'Unable to fetch geolocation data'], 500);
+        }
+    }
+
     public function storeIpRequest(Request $request)
     {
         // Validate incoming data
@@ -647,12 +704,42 @@ public function storeTranslatedPost(Request $request)
     //     return response()->json($posts);
     // }
 
+    private function logGeolocationData(string $ipAddress)
+    {   
+        // Call a geolocation API to get details based on IP
+        $response = Http::get("https://get.geojs.io/v1/ip/geo.json");
+
+        if ($response->successful()) {
+            $geoData = $response->json();
+
+            // Log the geolocation data in the IpInfo table asynchronously
+            IpInfo::create([
+                'status' => 'success',
+                'country' => $geoData['country'],
+                'regionName' => $geoData['region'],
+                'city' => $geoData['city'],
+                'isp' => $geoData['isp'] ?? 'N/A',
+                'lat' => $geoData['lat'] ?? null,
+                'lon' => $geoData['lon'] ?? null,
+                'org' => $geoData['org'] ?? 'N/A',
+                'query' => $ipAddress,
+                'timezone' => $geoData['timezone'] ?? 'N/A',
+                'zip' => $geoData['zip'] ?? 'N/A',
+            ]);
+        } else {
+            // Handle the failure (optional)
+            Log::error("Failed to fetch geolocation data for IP: $ipAddress");
+        }
+    }
 
 
 
-
-    public function getLatestPosts()
-    {
+    public function getLatestPosts(Request $request)
+    
+    {   
+        // Get the real client IP address
+            $ipAddress = $request->ip();
+        $this->logGeolocationData($ipAddress);
         $cacheKey = 'latest_posts';
 
     // Check if cache exists
