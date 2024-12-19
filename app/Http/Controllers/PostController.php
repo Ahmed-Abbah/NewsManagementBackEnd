@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Exception;
 use Illuminate\Support\Facades\Cache;
+use App\Models\IpInfo;
 use DB;
 
 class PostController extends Controller
@@ -535,6 +536,46 @@ public function storeTranslatedPost(Request $request)
     public function edit(string $id)
     {
         //
+    }
+
+    public function storeIpRequest(Request $request)
+    {
+        // Validate incoming data
+        $validated = $request->validate([
+            'status' => 'required|string|max:50',
+            'country' => 'required|string|max:100',
+            'countryCode' => 'required|string|max:10',
+            'region' => 'required|string|max:10',
+            'regionName' => 'required|string|max:100',
+            'city' => 'required|string|max:100',
+            'isp' => 'required|string|max:100',
+            'lat' => 'required|numeric',
+            'lon' => 'required|numeric',
+            'org' => 'nullable|string|max:255',
+            'query' => 'required|string|max:50',
+            'timezone' => 'required|string|max:100',
+            'zip' => 'nullable|string|max:20',
+        ]);
+
+        // Create a new IpInfo record
+        $ipInfo = IpInfo::create([
+            'status' => $validated['status'],
+            'country' => $validated['country'],
+            'countryCode' => $validated['countryCode'],
+            'region' => $validated['region'],
+            'regionName' => $validated['regionName'],
+            'city' => $validated['city'],
+            'isp' => $validated['isp'],
+            'lat' => $validated['lat'],
+            'lon' => $validated['lon'],
+            'org' => $validated['org'] ?? '',
+            'query' => $validated['query'],
+            'timezone' => $validated['timezone'],
+            'zip' => $validated['zip'] ?? '',
+        ]);
+
+        // Return the created record (optional)
+        return response()->json($ipInfo, 201);
     }
 
     /**

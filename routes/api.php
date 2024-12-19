@@ -30,6 +30,7 @@ Route::get('post/slug/{slug}', [PostController::class, 'getPostBySlug']);
 Route::middleware('auth:sanctum')->group(function(){
     Route::get('posts/create', [PostController::class, 'create']);
     Route::post('posts', [PostController::class, 'store']);
+    Route::post('posts/storeIpRequestData', [PostController::class, 'storeIpRequest']);
     Route::post('saveImage', [PostController::class, 'storeImage']);
     Route::post('savePostTranslation', [PostController::class, 'storeTranslatedPost']);
     Route::post('categories', [CategoryController::class, 'store']); // Create a new category
