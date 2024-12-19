@@ -38,31 +38,35 @@ class LogGeolocation
      */
     private function logGeolocationData(string $ipAddress)
     {
-        // Call a geolocation API to get details based on IP
-        $response = Http::get("https://get.geojs.io/v1/ip/geo.json");
-
+        // Call a geolocation API with the client's IP address
+        $response = Http::get("https://get.geojs.io/v1/ip/geo/{$ipAddress}.json");
+    
         if ($response->successful()) {
             $geoData = $response->json();
-
+    
             // Log the geolocation data in the IpInfo table asynchronously
             IpInfo::create([
-                'status' => 'success',
-                'country' => $geoData['country'],
-                //'countryCode' => $geoData['countryCode'],
-                //'region' => $geoData['region'],
-                //'regionName' => $geoData['region'],
-                'city' => $geoData['city'],
-                'isp' => $geoData['isp'] ?? 'N/A',
-                'lat' => $geoData['lat'] ?? null,
-                'lon' => $geoData['lon'] ?? null,
-                'org' => $geoData['org'] ?? 'N/A',
-                'query' => $ipAddress,
-                'timezone' => $geoData['timezone'] ?? 'N/A',
-                'zip' => $geoData['zip'] ?? 'N/A',
-            ]);
+                    'status' => 'success',
+                    'country' => $geoData['country'],
+                    'countryCode' => $geoData['country_code'],
+                    'region' => $geoData['region'],
+                    'regionName' => $geoData['region'],
+                    'city' => $geoData['city'],
+                    'isp' => $geoData['isp'] ?? 'N/A',
+                    'lat' => $geoData['latitude'] ?? null,
+                    'lon' => $geoData['longitude'] ?? null,
+                    'org' => $geoData['organization_name'] ?? 'N/A',
+                    'query' => $ipAddress,
+                    'timezone' => $geoData['timezone'] ?? 'N/A',
+                    'zip' => $geoData['zip'] ?? 'N/A',
+                ]);
+            
         } else {
             // Handle the failure (optional)
             Log::error("Failed to fetch geolocation data for IP: $ipAddress");
         }
     }
+    
 }
+
+
