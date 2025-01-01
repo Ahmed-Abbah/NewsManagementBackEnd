@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Exception;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -43,23 +44,27 @@ class LogGeolocation
     
         if ($response->successful()) {
             $geoData = $response->json();
-    
+            //dd($geoData);
             // Log the geolocation data in the IpInfo table asynchronously
-            IpInfo::create([
+            try{
+                IpInfo::create([
                     'status' => 'success',
-                    'country' => $geoData['country'],
-                    'countryCode' => $geoData['country_code'],
-                    'region' => $geoData['region'],
-                    'regionName' => $geoData['region'],
-                    'city' => $geoData['city'],
+                    'country' => $geoData['country'] ?? null,
+                    'countryCode' => $geoData['country_code'] ?? null,
+                    'region' => $geoData['region'] ?? null,
+                    'regionName' => $geoData['region'] ?? null,
+                    'city' => $geoData['city'] ?? null,
                     'isp' => $geoData['isp'] ?? 'N/A',
-                    'lat' => $geoData['latitude'] ?? null,
-                    'lon' => $geoData['longitude'] ?? null,
+                    'lat' => $geoData['latitude'] ?? "0",
+                    'lon' => $geoData['longitude'] ?? "0",
                     'org' => $geoData['organization_name'] ?? 'N/A',
                     'query' => $ipAddress,
                     'timezone' => $geoData['timezone'] ?? 'N/A',
                     'zip' => $geoData['zip'] ?? 'N/A',
                 ]);
+            }catch(Exception $e){
+                Log::error("Error while saving visitor data to database : $e");
+            }
             
         } else {
             // Handle the failure (optional)

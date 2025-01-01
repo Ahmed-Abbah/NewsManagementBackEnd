@@ -27,13 +27,16 @@ class PostController extends Controller
     // }
 
     public function index()
-    {
-        // Fetch posts where post_mime_type contains "image"
-        $posts = Post::where('post_mime_type', 'like', '%image%')
-                    ->paginate(10);
-        
-        return response()->json($posts);
-    }
+{
+    // Fetch all posts with post_type as "post" and sort by post_date descending
+    $posts = Post::where("post_type", "post")
+        ->orderBy("post_date", "asc")
+        ->get();
+    return response()->json($posts);
+}
+
+    
+
 
 
 
@@ -538,62 +541,7 @@ public function storeTranslatedPost(Request $request)
         //
     }
 
-    public function getRegionFromIp()
-    {
-        $ipAddress = request()->ip();
     
-        // Check if the IP's geolocation is cached
-        $geoData = Cache::remember("geo_ip_{$ipAddress}", now()->addMinutes(30), function () use ($ipAddress) {
-            // Make a request to GeoJS API to get geolocation information
-            $response = Http::get("https://get.geojs.io/v1/ip/geo.json");
-    
-            if ($response->successful()) {
-                return $response->json();
-            }
-            return null;  // In case of failure
-        });
-    
-        if ($geoData) {
-            // Extract geolocation details
-            $region = $geoData['region'];
-            $country = $geoData['country'];
-            $city = $geoData['city'];
-            $countryCode = $geoData['countryCode'];
-            $status = 'success'; // Status of the geolocation request
-            $isp = $geoData['isp'] ?? 'N/A'; // ISP info (if available)
-            $lat = $geoData['lat'] ?? null; // Latitude (if available)
-            $lon = $geoData['lon'] ?? null; // Longitude (if available)
-            $org = $geoData['org'] ?? 'N/A'; // Organization info (if available)
-            $timezone = $geoData['timezone'] ?? 'N/A'; // Timezone info (if available)
-            $zip = $geoData['zip'] ?? 'N/A'; // ZIP code (if available)
-    
-            // Log the data in the IpInfo table
-            IpInfo::create([
-                'status' => $status,
-                'country' => $country,
-                'countryCode' => $countryCode,
-                'region' => $region,
-                'regionName' => $region,  // You can add a more specific field if needed
-                'city' => $city,
-                'isp' => $isp,
-                'lat' => $lat,
-                'lon' => $lon,
-                'org' => $org,
-                'query' => $ipAddress,
-                'timezone' => $timezone,
-                'zip' => $zip
-            ]);
-    
-            return response()->json([
-                'ip' => $ipAddress,
-                'region' => $region,
-                'country' => $country,
-                'city' => $city,
-            ]);
-        } else {
-            return response()->json(['error' => 'Unable to fetch geolocation data'], 500);
-        }
-    }
 
     public function storeIpRequest(Request $request)
     {
@@ -709,14 +657,13 @@ public function storeTranslatedPost(Request $request)
 
 
     public function getLatestPosts()
-    
     {   
         
         $cacheKey = 'latest_posts';
 
     // Check if cache exists
     $cachedPosts = Cache::get($cacheKey);
-    Log::info('Cache before fetching:', ['cached_posts' => $cachedPosts]);
+    //Log::info('Cache before fetching:', ['cached_posts' => $cachedPosts]);
         // Check if cached data is available
         $posts = Cache::remember('latest_posts', now()->addMinutes(60*24*7), function () {
             // Fetch the latest 20 posts with valid post_title and post_type 'post'
