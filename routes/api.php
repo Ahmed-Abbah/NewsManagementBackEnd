@@ -32,12 +32,18 @@ Route::get('posts/{post}', [PostController::class, 'show']);
 Route::get('post/slug/{slug}', [PostController::class, 'getPostBySlug']);
 //Routes accessible only after successful authentication
 Route::middleware('auth:sanctum')->group(function(){
+    Route::post('posts/modify', [PostController::class, 'modifyPost']);
+    Route::post('posts/delete', [PostController::class, 'deletePost']);
     Route::get('posts/create', [PostController::class, 'create']);
     Route::post('posts', [PostController::class, 'store']);
     Route::post('posts/storeIpRequestData', [PostController::class, 'storeIpRequest']);
     Route::post('saveImage', [PostController::class, 'storeImage']);
     Route::post('savePostTranslation', [PostController::class, 'storeTranslatedPost']);
     Route::post('categories', [CategoryController::class, 'store']); // Create a new category
+    Route::post('categories/delete', [CategoryController::class, 'deleteCategory']); 
+    Route::post('categories/save', [CategoryController::class, 'newCategory']); 
+    Route::post('categories/update', [CategoryController::class, 'update']); 
+
     Route::put('categories/{id}', [CategoryController::class, 'update']); // Update a category
     Route::delete('categories/{id}', [CategoryController::class, 'destroy']); // Delete a category
     

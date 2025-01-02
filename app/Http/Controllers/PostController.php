@@ -25,15 +25,100 @@ class PostController extends Controller
 
     
     // }
-
     public function index()
+    {    
+        // If no cache, fetch posts from database and cache the result
+        $posts = Post::where("post_type", "post")
+            ->orderBy("post_date", "desc")
+            ->whereNotNull('post_title') // Ensure post_title is not null
+            ->where('post_title', '!=', '') // Ensure post_title is not empty
+            ->where('post_type', 'post')
+            ->where('post_status', 'publish') // Filter for post_type = 'post'
+            ->get();
+        return response()->json($posts);
+    }
+
+
+
+    public function modifyPost(Request $request)
+    {
+        try{
+            
+        // Validate the incoming data
+        $validatedData = $request->validate([
+            'ID' => 'required|integer',   // Ensure it's an integer
+            'title' => 'required|string',
+            'slug' => 'required|string',
+            'content' => 'required|string',
+            'excerpt' => 'nullable|string',
+        ]);
+    
+        // Prepare the SQL query to update the post
+        $updateQuery = "
+            UPDATE www_posts
+            SET post_title = ?, post_name = ?, post_content = ?, post_excerpt = ?
+            WHERE id = ?
+        ";
+    
+        // Execute the raw SQL query using the DB facade
+        $updated = DB::update($updateQuery, [
+            $validatedData['title'],
+            $validatedData['slug'],
+            $validatedData['content'],
+            $validatedData['excerpt'] ?? null, // If 'excerpt' is null, we pass null
+            $validatedData['ID'],
+        ]);
+    
+        // Check if any rows were updated
+        if ($updated) {
+            // Return success message
+            return response()->json(['message' => 'Post updated successfully'], 200);
+        } else {
+            // Return error if no rows were updated (post not found or no changes)
+            return response()->json(['error' => 'Post not found or no changes made'], 404);
+        }
+    }
+        catch(Exception $e){
+            Log::error("Error while saving post Modification : $e");
+        }
+    }
+
+    public function deletePost(Request $request)
 {
-    // Fetch all posts with post_type as "post" and sort by post_date descending
-    $posts = Post::where("post_type", "post")
-        ->orderBy("post_date", "asc")
-        ->get();
-    return response()->json($posts);
+    try {
+        // Validate the incoming data
+        $validatedData = $request->validate([
+            'ID' => 'required|integer', // Ensure 'id' is required and an integer
+        ]);
+
+        // Prepare the SQL query to delete the post
+        $deleteQuery = "
+            DELETE FROM www_posts
+            WHERE id = ?
+        ";
+
+        // Execute the raw SQL query using the DB facade
+        $deleted = DB::delete($deleteQuery, [
+            $validatedData['ID'],
+        ]);
+
+        // Check if any rows were deleted
+        if ($deleted) {
+            // Return success message
+            return response()->json(['message' => 'Post deleted successfully'], 200);
+        } else {
+            // Return error if no rows were deleted (post not found)
+            return response()->json(['error' => 'Post not found'], 404);
+        }
+    } catch (Exception $e) {
+        // Log the error with detailed context
+        Log::error("Error while deleting post: {$e->getMessage()}");
+
+        // Return a generic error response
+        return response()->json(['error' => 'An error occurred while deleting the post'], 500);
+    }
 }
+
 
     
 
@@ -703,12 +788,13 @@ public function storeTranslatedPost(Request $request)
         return response()->json($posts);
     }
 
-    public function refreshCache()
+    public static function refreshCache()
     {
         $cacheKey = 'latest_posts';
 
     // Check if cache exists
     $cachedPosts = Cache::forget($cacheKey);
+    Cache::forget("all_posts");
     //Log::info('Cache before fetching:', ['cached_posts' => $cachedPosts]);
         // Check if cached data is available
         $posts = Cache::remember('latest_posts', now()->addMinutes(60*24*7), function () {
