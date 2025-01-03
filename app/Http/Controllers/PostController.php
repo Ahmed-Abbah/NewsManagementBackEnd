@@ -719,7 +719,7 @@ public function storeTranslatedPost(Request $request)
     // Fetch the post by slug and ensure the post is published
     $post = DB::selectOne('
         SELECT * 
-        FROM posts 
+        FROM www_posts 
         WHERE post_name = ? 
         AND post_status = "publish"
     ', [$slug]);
@@ -732,7 +732,7 @@ public function storeTranslatedPost(Request $request)
     // Fetch the attachment for the post image
     $attachment = DB::selectOne('
         SELECT * 
-        FROM posts 
+        FROM www_posts 
         WHERE ID = ?
     ', [$post->image_id]);
 
