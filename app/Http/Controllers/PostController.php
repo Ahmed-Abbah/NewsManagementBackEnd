@@ -741,52 +741,33 @@ public function storeTranslatedPost(Request $request)
 
 
 
-    public function getLatestPosts()
-    {   
-        
-        $cacheKey = 'latest_posts';
-
-    // Check if cache exists
-    $cachedPosts = Cache::get($cacheKey);
-    //Log::info('Cache before fetching:', ['cached_posts' => $cachedPosts]);
-        // Check if cached data is available
-        $posts = Cache::remember('latest_posts', now()->addMinutes(60*24*7), function () {
-            // Fetch the latest 20 posts with valid post_title and post_type 'post'
-            $posts = Post::whereNotNull('post_title') // Ensure post_title is not null
-                         ->where('post_title', '!=', '') // Ensure post_title is not empty
-                         ->where('post_type', 'post')
-                         ->where('post_status', 'publish') // Filter for post_type = 'post'
-                         ->orderBy('post_date', 'desc') // Order by post_date (most recent first)
-                         ->orderBy('view_count', 'desc') // Order by view_count (most viewed first)
-                         ->take(30) // Limit to the 10 latest posts
-                         ->get();
+    public function getPostBySlug($slug)
+{
+    // Fetch the post by slug
+    $post = Post::where('post_name', $slug)
+                ->where('post_status', 'publish') // Ensure the post is published
+                ->first();
     
-            // Get the Post IDs to query the categories for those posts
-            $postIds = $posts->pluck('ID');
-    
-            // Fetch categories related to the posts in one query
-            $categoryMappings = PostCategoryMapping::whereIn('PostId', $postIds)
-                                                   ->get();
-    
-            // Group categories by PostId
-            $categoriesMap = $categoryMappings->groupBy('PostId');
-    
-            // Attach categories and guid to each post
-            foreach ($posts as $post) {
-                // Fetch the attachment for the post image
-                $attachment = Post::where('ID', $post->image_id)->first();
-                $post->guid = $attachment ? $attachment->guid : null; // Attach guid if available
-    
-                // Get categories for the current post using the categoriesMap
-                $post->categories = $categoriesMap->get($post->ID, collect())->values(); // Use collect() to return an empty collection if no categories are found
-            }
-    
-            return $posts;
-        });
-    
-        // Return the posts along with their categories
-        return response()->json($posts);
+    // Handle case when the post is not found
+    if (!$post) {
+        return response()->json(['error' => 'Post not found'], 404);
     }
+    
+    // Fetch the attachment for the post image
+    $attachment = Post::where('ID', $post->image_id)->first();
+    $post->guid = $attachment ? $attachment->guid : null; // Attach guid if available
+
+    // Fetch categories associated with the post
+    $categories = PostCategoryMapping::where('PostId', $post->ID)->get();
+    $post->categories = $categories;
+
+    // Increment view count in a single query
+    $post->increment('view_count');
+
+    // Return the post along with its categories
+    return response()->json($post);
+}
+
 
     public static function refreshCache()
     {
