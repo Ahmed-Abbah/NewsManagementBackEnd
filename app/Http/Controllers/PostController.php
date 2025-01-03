@@ -139,7 +139,7 @@ class PostController extends Controller
 
 
      public function store(Request $request)
-     {
+     {  
          // Log the received data
          Log::info('Received data:', $request->all());
      
@@ -192,6 +192,8 @@ class PostController extends Controller
              'post_type' => $validated['post_type'],
              'guid' => $imagePath, // Store the image path here if it exists
          ]);
+
+         $this->refreshCache();
      
          // Return the created post as a response
          return response()->json($post, 201);
@@ -261,7 +263,7 @@ class PostController extends Controller
     }
 
 
-    $postExcerpt = $request->input('post_excerpt') ;
+    $postExcerpt = $request->input('post_excerpt');
     $postSlug = $request->input('post_name') ;
     // Insert the post Image as post record where the post_type takes "attachmnt" data into the database
     DB::insert(
@@ -319,7 +321,7 @@ class PostController extends Controller
 
         
 
-        DB::insert("INSERT INTO Post_Category_Mapping(PostTitle,PostId,CategoryName,CategoryId) values (:PostTitle,:PostId,:CategoryName,:CategoryId)",
+        DB::insert("INSERT INTO post_category_mapping(PostTitle,PostId,CategoryName,CategoryId) values (:PostTitle,:PostId,:CategoryName,:CategoryId)",
         [
             'PostTitle' => $fullPost->post_title,
             'PostId' => $postId,
@@ -431,7 +433,7 @@ public function storeTranslatedPost(Request $request)
                 if ($fullCategory) {
                     // Insert the category mapping
                     DB::insert(
-                        "INSERT INTO post_category_mapping (PostTitle, PostId, CategoryName, CategoryId) 
+                        "INSERT INTO post_category_mapping(PostTitle, PostId, CategoryName, CategoryId) 
                         VALUES (:PostTitle, :PostId, :CategoryName, :CategoryId)",
                         [
                             'PostTitle' => $fullPost->post_title,
