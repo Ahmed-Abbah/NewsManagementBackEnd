@@ -319,7 +319,7 @@ class PostController extends Controller
 
         
 
-        DB::insert("INSERT INTO post_category_mapping(PostTitle,PostId,CategoryName,CategoryId) values (:PostTitle,:PostId,:CategoryName,:CategoryId)",
+        DB::insert("INSERT INTO Post_Category_Mapping(PostTitle,PostId,CategoryName,CategoryId) values (:PostTitle,:PostId,:CategoryName,:CategoryId)",
         [
             'PostTitle' => $fullPost->post_title,
             'PostId' => $postId,
