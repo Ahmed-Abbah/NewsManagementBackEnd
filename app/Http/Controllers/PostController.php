@@ -567,34 +567,7 @@ public function storeTranslatedPost(Request $request)
 
 
 
-    public function getPostBySlug($slug)
-    {
-        // Use a single query to fetch the post and its associated image details
-        $post = DB::table('www_posts as p')
-            ->leftJoin('www_posts as a', 'p.image_id', '=', 'a.id') // Join for image details
-            ->select('p.*', 'a.guid as image_guid') // Select post and image details
-            ->where('p.post_name', $slug)
-            ->first();
     
-        // Handle case when the post is not found
-        if (!$post) {
-            return response()->json(['error' => 'Post not found'], 404);
-        }
-    
-        // Increment view count in a single query
-        DB::statement("UPDATE www_posts SET view_count = view_count + 1 WHERE post_name = ?", [$slug]);
-    
-        // Attach the image GUID to the post object
-        $post->guid = $post->image_guid;
-        
-    
-        // Fetch categories associated with the post
-        $categories = PostCategoryMapping::where('PostId', $post->ID)->get();
-        $post->categories = $categories;
-    
-        // Return the post as a JSON response
-        return response()->json($post);
-    }
         public function getTopPostsBasedOnViews()
     {
         $posts = Post::where('post_mime_type', 'like', '%image%')
@@ -742,31 +715,32 @@ public function storeTranslatedPost(Request $request)
 
 
     public function getPostBySlug($slug)
-{
-    // Fetch the post by slug
-    $post = Post::where('post_name', $slug)
-                ->where('post_status', 'publish') // Ensure the post is published
-                ->first();
+    {
+        // Fetch the post by slug
+        $post = Post::where('post_name', $slug)
+                    ->where('post_status', 'publish') // Ensure the post is published
+                    ->first();
+        
+        // Handle case when the post is not found
+        if (!$post) {
+            return response()->json(['error' => 'Post not found'], 404);
+        }
+        
+        // Fetch the attachment for the post image
+        $attachment = Post::where('ID', $post->image_id)->first();
+        $post->guid = $attachment ? $attachment->guid : null; // Attach guid if available
     
-    // Handle case when the post is not found
-    if (!$post) {
-        return response()->json(['error' => 'Post not found'], 404);
+        // Fetch categories associated with the post
+        $categories = PostCategoryMapping::where('PostId', $post->ID)->get();
+        $post->categories = $categories;
+    
+        // Increment view count in a single query
+        $post->increment('view_count');
+    
+        // Return the post along with its categories
+        return response()->json($post);
     }
     
-    // Fetch the attachment for the post image
-    $attachment = Post::where('ID', $post->image_id)->first();
-    $post->guid = $attachment ? $attachment->guid : null; // Attach guid if available
-
-    // Fetch categories associated with the post
-    $categories = PostCategoryMapping::where('PostId', $post->ID)->get();
-    $post->categories = $categories;
-
-    // Increment view count in a single query
-    $post->increment('view_count');
-
-    // Return the post along with its categories
-    return response()->json($post);
-}
 
 
     public static function refreshCache()
