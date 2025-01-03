@@ -715,31 +715,49 @@ public function storeTranslatedPost(Request $request)
 
 
     public function getPostBySlug($slug)
-    {
-        // Fetch the post by slug
-        $post = Post::where('post_name', $slug)
-                    ->where('post_status', 'publish') // Ensure the post is published
-                    ->first();
-        
-        // Handle case when the post is not found
-        if (!$post) {
-            return response()->json(['error' => 'Post not found'], 404);
-        }
-        
-        // Fetch the attachment for the post image
-        $attachment = Post::where('ID', $post->image_id)->first();
-        $post->guid = $attachment ? $attachment->guid : null; // Attach guid if available
-    
-        // Fetch categories associated with the post
-        $categories = PostCategoryMapping::where('PostId', $post->ID)->get();
-        $post->categories = $categories;
-    
-        // Increment view count in a single query
-        $post->increment('view_count');
-    
-        // Return the post along with its categories
-        return response()->json($post);
+{
+    // Fetch the post by slug and ensure the post is published
+    $post = DB::selectOne('
+        SELECT * 
+        FROM posts 
+        WHERE post_name = ? 
+        AND post_status = "publish"
+    ', [$slug]);
+
+    // Handle case when the post is not found
+    if (!$post) {
+        return response()->json(['error' => 'Post not found'], 404);
     }
+
+    // Fetch the attachment for the post image
+    $attachment = DB::selectOne('
+        SELECT * 
+        FROM posts 
+        WHERE ID = ?
+    ', [$post->image_id]);
+
+    $post->guid = $attachment ? $attachment->guid : null; // Attach guid if available
+
+    // Fetch categories associated with the post
+    $categories = DB::select('
+        SELECT * 
+        FROM post_category_mappings 
+        WHERE PostId = ?
+    ', [$post->ID]);
+
+    $post->categories = $categories;
+
+    // Increment view count using a raw query
+    DB::update('
+        UPDATE posts 
+        SET view_count = view_count + 1 
+        WHERE ID = ?
+    ', [$post->ID]);
+
+    // Return the post along with its categories
+    return response()->json($post);
+}
+
     
 
 
