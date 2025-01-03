@@ -741,7 +741,7 @@ public function storeTranslatedPost(Request $request)
     // Fetch categories associated with the post
     $categories = DB::select('
         SELECT * 
-        FROM post_category_mappings 
+        FROM post_category_mapping
         WHERE PostId = ?
     ', [$post->ID]);
 
