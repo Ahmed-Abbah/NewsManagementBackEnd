@@ -586,7 +586,7 @@ public function storeTranslatedPost(Request $request)
     
         // Attach the image GUID to the post object
         $post->guid = $post->image_guid;
-        unset($post->image_guid); // Remove intermediate field
+        
     
         // Fetch categories associated with the post
         $categories = PostCategoryMapping::where('PostId', $post->ID)->get();
