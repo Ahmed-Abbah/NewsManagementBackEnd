@@ -72,6 +72,7 @@ class PostController extends Controller
         // Check if any rows were updated
         if ($updated) {
             // Return success message
+            $this->refreshCache();
             return response()->json(['message' => 'Post updated successfully'], 200);
         } else {
             // Return error if no rows were updated (post not found or no changes)
@@ -104,6 +105,7 @@ class PostController extends Controller
 
         // Check if any rows were deleted
         if ($deleted) {
+            $this->refreshCache();
             // Return success message
             return response()->json(['message' => 'Post deleted successfully'], 200);
         } else {
