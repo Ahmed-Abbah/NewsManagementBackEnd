@@ -749,7 +749,7 @@ public function storeTranslatedPost(Request $request)
 
     // Increment view count using a raw query
     DB::update('
-        UPDATE posts 
+        UPDATE www_posts 
         SET view_count = view_count + 1 
         WHERE ID = ?
     ', [$post->ID]);
