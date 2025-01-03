@@ -724,20 +724,18 @@ public function storeTranslatedPost(Request $request)
         AND post_status = "publish"
     ', [$slug]);
 
+    
+
     // Handle case when the post is not found
     if (!$post) {
         return response()->json(['error' => 'Post not found'], 404);
     }
 
     // Fetch the attachment for the post image
-    $attachment = DB::selectOne('
-        SELECT * 
-        FROM www_posts 
-        WHERE ID = ?
-    ', [$post->image_id]);
-
+    $attachment = Post::where('ID', $post->image_id)->first();
+    
     $post->guid = $attachment ? $attachment->guid : null; // Attach guid if available
-
+    //dd($post->guid);
     // Fetch categories associated with the post
     $categories = DB::select('
         SELECT * 
