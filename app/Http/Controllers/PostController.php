@@ -721,7 +721,7 @@ public function storeTranslatedPost(Request $request)
         SELECT * 
         FROM www_posts 
         WHERE post_name = ? 
-        AND post_status = "publish"
+        AND post_type = "post"
     ', [$slug]);
 
     
