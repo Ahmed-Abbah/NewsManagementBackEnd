@@ -11,6 +11,10 @@ use Exception;
 use Illuminate\Support\Facades\Cache;
 use App\Models\IpInfo;
 use DB;
+use Illuminate\Support\Facades\Storage;
+
+use Symfony\Component\HttpFoundation\Response;
+
 use Illuminate\Support\Facades\Http;
 class PostController extends Controller
 {
@@ -140,69 +144,379 @@ class PostController extends Controller
      */
 
 
-     public function store(Request $request)
-     {  
-         // Log the received data
-         Log::info('Received data:', $request->all());
+    //  public function store(Request $request)
+    //  {  
+    //      // Log the received data
+    //      Log::info('Received data:', $request->all());
      
-         // Validate the incoming request
-         $validated = $request->validate([
-             'post_title' => 'required|string|max:255',
-             'post_content' => 'required|string',
-             'post_status' => 'required|string|max:20',
-             'post_type' => 'required|string|max:20',
-             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // Image validation with 'image' field
-         ]);
+    //      // Validate the incoming request
+    //      $validated = $request->validate([
+    //          'post_title' => 'required|string|max:255',
+    //          'post_content' => 'required|string',
+    //          'post_status' => 'required|string|max:20',
+    //          'post_type' => 'required|string|max:20',
+    //          'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // Image validation with 'image' field
+    //      ]);
 
 
      
-         // Extract email from JWT (if the user is authenticated)
-         try {
-             $user = auth('sanctum')->user()->email;
-             $post_author = $user; // Extract the email from the authenticated user
-         } catch (Exception $e) {
-             // Handle error (if user is not authenticated or token is invalid)
-             return response()->json(['error' => 'Unauthorized'], 401);
-         }
+    //      // Extract email from JWT (if the user is authenticated)
+    //      try {
+    //          $user = auth('sanctum')->user()->email;
+    //          $post_author = $user; // Extract the email from the authenticated user
+    //      } catch (Exception $e) {
+    //          // Handle error (if user is not authenticated or token is invalid)
+    //          return response()->json(['error' => 'Unauthorized'], 401);
+    //      }
      
-         $imagePath = null;
+    //      $imagePath = null;
      
-         // Handle image upload (if there's an image)
-         if ($request->hasFile('guid')) {
-             $file = $request->file('guid');
-             $filePath = $file->store('public/uploads');  // Store file in the 'public/uploads' directory
-             $fileUrl = Storage::url($filePath);
-             // Get the current date and time for the path
-             $currentDate = Carbon::now();
-             $year = $currentDate->year;
-             $month = $currentDate->month;
-             $timestamp = $currentDate->format('YmdHis'); // Current date and time with seconds (e.g. 20231121123015)
+    //      // Handle image upload (if there's an image)
+    //      if ($request->hasFile('guid')) {
+    //          $file = $request->file('guid');
+    //          $filePath = $file->store('public/uploads');  // Store file in the 'public/uploads' directory
+    //          $fileUrl = Storage::url($filePath);
+    //          // Get the current date and time for the path
+    //          $currentDate = Carbon::now();
+    //          $year = $currentDate->year;
+    //          $month = $currentDate->month;
+    //          $timestamp = $currentDate->format('YmdHis'); // Current date and time with seconds (e.g. 20231121123015)
      
-             // Create a custom path for storing the image
-             $imagePath = "uploads/{$year}/{$month}/{$timestamp}_{$request->file('image')->getClientOriginalName()}";
+    //          // Create a custom path for storing the image
+    //          $imagePath = "uploads/{$year}/{$month}/{$timestamp}_{$request->file('image')->getClientOriginalName()}";
      
-             // Store the image in the 'public' disk (ensure the public folder is linked)
-             $path = $request->file('image')->storeAs('public/' . $imagePath);
-         }
+    //          // Store the image in the 'public' disk (ensure the public folder is linked)
+    //          $path = $request->file('image')->storeAs('public/' . $imagePath);
+    //      }
      
-        //  Create the main post with the validated data (with or without the image)
-         $post = Post::create([
-             'post_author' => $post_author,  // Set post_author as the email of the authenticated user
-             'post_title' => $validated['post_title'],
-             'post_content' => $validated['post_content'],
-             'post_status' => $validated['post_status'],
-             'post_type' => $validated['post_type'],
-             'guid' => $imagePath, // Store the image path here if it exists
-         ]);
+    //     //  Create the main post with the validated data (with or without the image)
+    //      $post = Post::create([
+    //          'post_author' => $post_author,  // Set post_author as the email of the authenticated user
+    //          'post_title' => $validated['post_title'],
+    //          'post_content' => $validated['post_content'],
+    //          'post_status' => $validated['post_status'],
+    //          'post_type' => $validated['post_type'],
+    //          'guid' => $imagePath, // Store the image path here if it exists
+    //      ]);
 
-         $this->refreshCache();
+    //      $this->refreshCache();
      
-         // Return the created post as a response
-         return response()->json($post, 201);
-     }
+    //      // Return the created post as a response
+    //      return response()->json($post, 201);
+    //  }
 
 
-     public function storeImage(Request $request)
+//      public function storeImage(Request $request)
+// {     
+//     try{
+//         //Log::info('Received Post data:', $request->all());
+
+//     // Define required fields with user-friendly names
+//     $rules = [
+//         'post_title' => 'Post Title',
+//         'post_content' => 'Post Content',
+//         'post_status' => 'Post Status',
+//         'post_excerpt' => 'Post Excerpt',
+//         'post_name' => 'Post Slug',
+//         'guid' => 'Image',
+//         'categories' => 'Categories',
+//     ];
+
+//     // Collect user-friendly error messages for missing fields
+//     $missingMessages = [];
+//     foreach ($rules as $field => $friendlyName) {
+//         if (!$request->has($field) ) {
+//             $missingMessages[] = "The field '$friendlyName' is required.";
+//         }
+//     }
+
+//     // If any fields are missing, return an error response
+//     if (!empty($missingMessages)) {
+//         return response()->json([
+//             'error' => 'Validation failed',
+//             'messages' => $missingMessages,
+//         ], 422);
+//     }
+ 
+//     $imageUrl = null;
+    
+    
+//     // Handle the image upload if it exists
+//     if ($request->hasFile('guid')) {
+//         // Get the original file extension
+//         $extension = $request->file('guid')->getClientOriginalExtension();
+
+//         $postTitle = $request->input('post_title');
+
+//         // Generate a custom name (for example, using timestamp and a unique identifier)
+//         $fileName = preg_replace('/[^A-Za-z0-9_-]/', '-', $postTitle).'.' . $extension;
+        
+//         // Store the file in the 'uploads/yyyy/mm' folder with the custom name
+//         $path = $request->file('guid')->storeAs('uploads/' . date('Y/m'), $fileName, 'public');
+        
+//         // Generate the full URL to the stored file
+//         $imageUrl = url('storage/' . $path);
+//     }else{
+//         return response()->json([
+//             'error' => 'Validation failed',
+//             'messages' => 'post should have an image',
+//         ], 422);
+//     }
+
+//     if($request->input('lng')){
+//         $lng = $request->input('lng');
+//     }else{
+//         Log::info('No Post Language detected');
+//     }
+
+//     if($request->input('lng')){
+//         $lng = $request->input('lng');
+//     }else{
+//         Log::info('No Post Language detected');
+//     }
+
+//     $postExcerpt = $request->input('post_excerpt');
+//     $postSlug = $request->input('post_name') ;
+//     // Insert the post Image as post record where the post_type takes "attachmnt" data into the database
+//     DB::insert(
+//         "INSERT INTO www_posts (post_title, post_content, post_excerpt,post_name,post_status, post_type, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
+//         VALUES (:post_title, :post_content, :post_excerpt,:post_name, :post_status, :post_type, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
+//         [
+//             'post_title' => $request->input('post_title'),
+//             'post_content' => $request->input('post_content'),
+//             'post_excerpt' => $postExcerpt,
+//             'post_name' => $postSlug,
+//             'post_status' => $request->input('post_status'),
+//             'post_type' => "attachment",
+//             'to_ping' => "www.maroc-leaks.com",
+//             'post_content_filtered' => $lng,
+//             'pinged' => "www.maroc-leaks.com",
+//             'ping_status' => "open",
+//             'guid' => $imageUrl,
+//         ]
+//     );
+
+//     // Retrieve the last inserted post(Image od the actual post) ID to put in the post image
+//     $postId = DB::getPdo()->lastInsertId();
+
+//     // Insert the post Image as post record where the post_type takes "attachmnt" data into the database
+//     DB::insert(
+//         "INSERT INTO www_posts (post_title, post_content, post_excerpt,post_name, post_status, post_type,image_id, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
+//         VALUES (:post_title, :post_content, :post_excerpt,:post_name, :post_status, :post_type,:image_id, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
+//         [
+//             'post_title' => $request->input('post_title'),
+//             'post_content' => $request->input('post_content'),
+//             'post_excerpt' => $request->input('post_excerpt'),
+//             'post_name' => $request->input('post_name'),
+//             'post_status' => $request->input('post_status'),
+//             'post_type' => "post",
+//             'to_ping' => "www.maroc-leaks.com",
+//             'post_content_filtered' => $lng,
+//             'pinged' => "www.maroc-leaks.com",
+//             'ping_status' => "open",
+//             'guid' => $imageUrl,
+//             'image_id'=> $postId
+//         ]
+//     );
+
+//     // Retrieve the last inserted post ID to put in the post image
+//     $postId = DB::getPdo()->lastInsertId();
+//     $fullPost = DB::table('www_posts')
+//               ->where('id', $postId)
+//               ->first();
+
+//     foreach($request->input('categories') as $catId){
+
+//         $fullCatgeory= DB::table('www_terms')
+//               ->where('term_id', $catId)
+//               ->first();
+
+//         DB::insert("INSERT INTO post_category_mapping(PostTitle,PostId,CategoryName,CategoryId) values (:PostTitle,:PostId,:CategoryName,:CategoryId)",
+//         [
+//             'PostTitle' => $fullPost->post_title,
+//             'PostId' => $postId,
+//             'CategoryName' => $fullCatgeory->name,
+//             'CategoryId' => $catId
+//         ]);
+//     }
+//     //Addin file attachment if it exists
+//     $hasFileAttachment = false;
+//     $finalFileAttachmentUrl = "";
+//     try{
+//         // Handle the file Attachement upload if it exists
+//     if ($request->hasFile('fileAttachment')) {
+//         // Get the original file extension
+//         $extension = $request->file('fileAttachment')->getClientOriginalExtension();
+
+//         $postTitle = $request->input('post_title');
+
+//         // Generate a custom name (for example, using timestamp and a unique identifier)
+//         $fileName = preg_replace('/[^A-Za-z0-9_-]/', '-', $postTitle).'.' . $extension;
+
+//         // Store the file in the 'uploads/yyyy/mm' folder with the custom name
+//         $path = $request->file('fileAttachment')->storeAs('uploads/' . date('Y/m'), $fileName, 'public');
+
+//         // Generate the full URL to the stored file
+//         $fileAttachmentUrl = url('storage/' . $path);
+
+//         // Insert the post file Attachment as post record where the post_type takes "fileAttachment" data into the database
+//         DB::update(
+//             "UPDATE www_posts SET fileAttachment = :fileAttachment WHERE ID = :ID",
+//             [
+//                 'fileAttachment' => $fileAttachmentUrl,
+//                 'ID' => $postId,
+//             ]
+//         );
+        
+//         $hasFileAttachment=true;
+//         $finalFileAttachmentUrl=$fileAttachmentUrl;
+//     }
+//     }catch(Exception $e){
+//         Log::error($e->getMessage());
+//     }
+//     $this->refreshCache();
+// $responseData = [
+//     'message' => 'Post created successfully',
+//     'data' => [
+//         'post_id' => $postId,
+//         'image_id' => $fullPost->image_id
+//     ],
+// ];
+
+// if ($hasFileAttachment) {
+//     $responseData['data']['file'] = $finalFileAttachmentUrl;
+// }
+
+// return response()->json($responseData, 201);
+
+
+//     }catch(Exception $e){
+//         Log::error($e->getMessage());
+//         return response()->json([
+//             'message' => 'Internal Error',
+//             'error' => $e->getMessage()
+//         ], 500);
+//     }
+// }
+
+
+// public function storeImage(Request $request)
+// {
+//     try {
+//         // Validation
+//         $rules = [
+//             'post_title' => 'Post Title',
+//             'post_content' => 'Post Content',
+//             'post_status' => 'Post Status',
+//             'post_excerpt' => 'Post Excerpt',
+//             'post_name' => 'Post Slug',
+//             'guid' => 'Image',
+//             'categories' => 'Categories',
+//         ];
+
+//         $missingMessages = [];
+//         foreach ($rules as $field => $friendlyName) {
+//             if (!$request->has($field)) {
+//                 $missingMessages[] = "The field '$friendlyName' is required.";
+//             }
+//         }
+
+//         if (!empty($missingMessages)) {
+//             return response()->json([
+//                 'error' => 'Validation failed',
+//                 'messages' => $missingMessages,
+//             ], 422);
+//         }
+
+//         // Image Upload
+//         $imageUrl = null;
+//         if ($request->hasFile('guid')) {
+//             $file = $request->file('guid');
+//             $fileName = preg_replace('/[^A-Za-z0-9_-]/', '-', $request->input('post_title')) . '.' . $file->getClientOriginalExtension();
+//             $path = $file->storeAs('uploads/' . date('Y/m'), $fileName, 'public');
+//             $imageUrl = url('storage/' . $path);
+//         } else {
+//             return response()->json([
+//                 'error' => 'Validation failed',
+//                 'messages' => 'Post should have an image',
+//             ], 422);
+//         }
+
+//         // Insert Post
+//         DB::insert(
+//             "INSERT INTO www_posts (post_title, post_content, post_excerpt, post_name, post_status, post_type, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
+//             VALUES (:post_title, :post_content, :post_excerpt, :post_name, :post_status, :post_type, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
+//             [
+//                 'post_title' => $request->input('post_title'),
+//                 'post_content' => $request->input('post_content'),
+//                 'post_excerpt' => $request->input('post_excerpt'),
+//                 'post_name' => $request->input('post_name'),
+//                 'post_status' => $request->input('post_status'),
+//                 'post_type' => "post",
+//                 'to_ping' => "www.maroc-leaks.com",
+//                 'post_content_filtered' => $request->input('lng', 'en'),
+//                 'pinged' => "www.maroc-leaks.com",
+//                 'ping_status' => "open",
+//                 'guid' => $imageUrl,
+//             ]
+//         );
+
+//         $postId = DB::getPdo()->lastInsertId();
+
+//         // Categories Mapping
+//         $categories = $request->input('categories', []);
+//         foreach ($categories as $catId) {
+//             $fullCategory = DB::table('www_terms')->where('term_id', $catId)->first();
+
+//             DB::insert(
+//                 "INSERT INTO post_category_mapping (PostTitle, PostId, CategoryName, CategoryId) 
+//                 VALUES (:PostTitle, :PostId, :CategoryName, :CategoryId)",
+//                 [
+//                     'PostTitle' => $request->input('post_title'),
+//                     'PostId' => $postId,
+//                     'CategoryName' => $fullCategory->name,
+//                     'CategoryId' => $catId,
+//                 ]
+//             );
+//         }
+
+//         // File Attachment Upload
+//         if ($request->hasFile('fileAttachment')) {
+//             $fileAttachment = $request->file('fileAttachment');
+//             $fileAttachmentName = preg_replace('/[^A-Za-z0-9_-]/', '-', $request->input('post_title')) . '.' . $fileAttachment->getClientOriginalExtension();
+//             $attachmentPath = $fileAttachment->storeAs('uploads/' . date('Y/m'), $fileAttachmentName, 'public');
+//             $fileAttachmentUrl = url('storage/' . $attachmentPath);
+
+//             DB::update(
+//                 "UPDATE www_posts SET fileAttachment = :fileAttachment WHERE ID = :ID",
+//                 [
+//                     'fileAttachment' => $fileAttachmentUrl,
+//                     'ID' => $postId,
+//                 ]
+//             );
+//         }
+
+//         // Response
+//         return response()->json([
+//             'message' => 'Post created successfully',
+//             'data' => [
+//                 'post_id' => $postId,
+//                 'image_url' => $imageUrl,
+//                 'file_attachment' => $fileAttachmentUrl ?? null,
+//             ],
+//         ], 201);
+//     } catch (Exception $e) {
+//         Log::error($e->getMessage());
+//         return response()->json([
+//             'message' => 'Internal Error',
+//             'error' => $e->getMessage(),
+//         ], 500);
+//     }
+// }
+
+
+
+public function storeImage(Request $request)
 {     
     try{
         //Log::info('Received Post data:', $request->all());
@@ -212,7 +526,6 @@ class PostController extends Controller
         'post_title' => 'Post Title',
         'post_content' => 'Post Content',
         'post_status' => 'Post Status',
-        'post_type' => 'Post Type',
         'post_excerpt' => 'Post Excerpt',
         'post_name' => 'Post Slug',
         'guid' => 'Image',
@@ -251,6 +564,8 @@ class PostController extends Controller
         
         // Generate the full URL to the stored file
         $imageUrl = url('storage/' . $path);
+
+
     }else{
         return response()->json([
             'error' => 'Validation failed',
@@ -333,18 +648,56 @@ class PostController extends Controller
     );
     }
 
-    
+
+    //Addin file attachment if it exists
+    $hasFileAttachment = false;
+    $finalFileAttachmentUrl = "";
+    try{
+        // Handle the file Attachement upload if it exists
+    if ($request->hasFile('fileAttachment')) {
+        // Get the original file extension
+        $extension = $request->file('fileAttachment')->getClientOriginalExtension();
+
+        $postTitle = $request->input('post_title');
+
+        // Generate a custom name (for example, using timestamp and a unique identifier)
+        $fileName = preg_replace('/[^A-Za-z0-9_-]/', '-', $postTitle).'.' . $extension;
+
+        // Store the file in the 'uploads/yyyy/mm' folder with the custom name
+        $path = $request->file('fileAttachment')->storeAs('uploads/' . date('Y/m'), $fileName, 'public');
+
+        // Generate the full URL to the stored file
+        $fileAttachmentUrl = url('storage/' . $path);
+
+        // Insert the post file Attachment as post record where the post_type takes "fileAttachment" data into the database
+        DB::update(
+            "UPDATE www_posts SET fileAttachment = :fileAttachment WHERE ID = :ID",
+            [
+                'fileAttachment' => $fileAttachmentUrl,
+                'ID' => $postId,
+            ]
+        );
+        
+        $hasFileAttachment=true;
+        $finalFileAttachmentUrl=$fileAttachmentUrl;
+    }
+    }catch(Exception $e){
+        Log::error($e->getMessage());
+        
+    }
+
 
     $this->refreshCache();
-    
-    // Return a response with the post ID
-    return response()->json([
-        'message' => 'Post created successfully',
-        'data' => [
-            'post_id' => $postId,
-            'image_id'=>$fullPost->image_id
-        ],
-    ], 201);
+
+    // Return a response with the post ID and other relevant data
+        return response()->json([
+            'message' => 'Post created successfully',
+            'data' => [
+                'post_id' => $postId,
+                'image_id' => $fullPost->image_id,
+                'file' => $hasFileAttachment ? $finalFileAttachmentUrl : null
+            ]
+        ], 201);
 
     }catch(Exception $e){
         Log::error($e->getMessage());
@@ -356,9 +709,7 @@ class PostController extends Controller
 }
 
 public function storeTranslatedPost(Request $request)
-{   
-
-
+{
     try {
         //Log::info('Received Translated Post data:', $request->all());
 
@@ -391,16 +742,26 @@ public function storeTranslatedPost(Request $request)
         if($request->input('lng')){
             $lng = $request->input('lng');
         }else{
-            Log::info('No Post Language detected');
+            Log::info('No Post Language detected' .$request);
             $lng="No lng detected";
         }
+
+
+
+
+        if($request->input('file')){
+            $fileAttachment = $request->input("file");
+        }else{
+            $fileAttachment= null;
+        }
+        
 
         $postExcerpt = $request->input('post_excerpt');
         $postSlug = $request->input('post_name') ;
         // Insert the post into the database
         DB::insert(
-            "INSERT INTO www_posts (post_parent,post_title, post_content, post_excerpt,post_name, post_status, post_type, image_id, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt) 
-            VALUES (:post_parent,:post_title, :post_content, :post_excerpt,:post_name, :post_status, :post_type, :image_id, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW())",
+            "INSERT INTO www_posts (post_parent,post_title, post_content, post_excerpt,post_name, post_status, post_type, image_id, to_ping, post_content_filtered, ping_status, pinged, guid, post_date, post_date_gmt,fileAttachment) 
+            VALUES (:post_parent,:post_title, :post_content, :post_excerpt,:post_name, :post_status, :post_type, :image_id, :to_ping, :post_content_filtered, :ping_status, :pinged, :guid, NOW(), NOW(),:fileAttachment)",
             [
                 'post_parent' => $request->input('post_parent'),
                 'post_title' => $request->input('post_title'),
@@ -415,6 +776,7 @@ public function storeTranslatedPost(Request $request)
                 'ping_status' => 'open',
                 'pinged' => 'www.maroc-leaks.com',
                 'guid' => '', // Replace with appropriate GUID if needed
+                'fileAttachment'=>$fileAttachment
             ]
         );
 
@@ -889,5 +1251,23 @@ public function getLatestPosts()
         // Return the posts along with their categories
         return response()->json($posts);
     }
+
+    
+
+    public function downloadFile($path)
+    {       
+        // Construct the full path to the file
+        $filePath = storage_path('uploads/2025/01/test-post-meant-to-test-a-new-feature-hopefully-it-works-now.pdf');
+        // dd($filePath);
+        // Check if the file exists
+        // if (!file_exists($filePath)) {
+        //     return response()->json(['message' => 'File not found'], 404);
+        // }
+    
+        // Return the file for download
+        return response()->download($filePath);
+    }
+    
+
 
 }

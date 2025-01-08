@@ -30,6 +30,7 @@ Route::get('posts/postsByCategory/{categoryName}', [PostController::class, 'getP
 Route::get('/post-category-mappings/postCategories/{postId}', [PostCategoryMappingController::class, 'getPostCatgeories']);
 Route::get('posts/{post}', [PostController::class, 'show']);
 Route::get('post/slug/{slug}', [PostController::class, 'getPostBySlug']);
+Route::get('/post/downloadFile/{filename}', [PostController::class, 'downloadFile']);
 //Routes accessible only after successful authentication
 Route::middleware('auth:sanctum')->group(function(){
     Route::post('posts/modify', [PostController::class, 'modifyPost']);
