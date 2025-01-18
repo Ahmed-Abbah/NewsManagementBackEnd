@@ -13,7 +13,7 @@ return [
 
     'allowed_origins' => ['*'], // '*' allows all origins, but you can restrict this to your front-end URL
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => ['*'],
 
     'allowed_headers' => ['*'], // Make sure to allow all headers or specific headers if necessary
 

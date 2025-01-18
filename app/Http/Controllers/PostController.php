@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\PostCategoryMapping;
@@ -11,8 +11,9 @@ use Exception;
 use Illuminate\Support\Facades\Cache;
 use App\Models\IpInfo;
 use DB;
+use Spatie\Sitemap\Tags\Url;
 use Illuminate\Support\Facades\Storage;
-
+use Spatie\Sitemap\Sitemap;
 use Symfony\Component\HttpFoundation\Response;
 
 use Illuminate\Support\Facades\Http;
@@ -688,7 +689,11 @@ public function storeImage(Request $request)
 
 
     $this->refreshCache();
-
+    try{
+        $this->appendToSitemap($fullPost->post_name,$fullPost->post_date);
+    }catch(Exception $e){
+        Log::error('Error while adding main post to the sitemap:', ['exception' => $e]);
+    }
     // Return a response with the post ID and other relevant data
         return response()->json([
             'message' => 'Post created successfully',
@@ -810,6 +815,11 @@ public function storeTranslatedPost(Request $request)
             }
         }
         $this->refreshCache();
+        try{
+            $this->appendToSitemap($fullPost->post_name,$fullPost->post_date);
+        }catch(Exception $e){
+            Log::error('Error while adding post tranlation to the sitemap:', ['exception' => $e]);
+        }
         // Return a success response with the post ID
         return response()->json([
             'message' => 'Post Translation created successfully',
@@ -827,6 +837,44 @@ public function storeTranslatedPost(Request $request)
         ], 500);
     }
 }
+
+
+public function generateSitemapAndRespond()
+{
+    try {
+        // Generate the sitemap using the console command
+        Artisan::call('sitemap:generate');
+    } catch (Exception $e) {
+        // Log the error and return an error response
+        Log::error('Error generating sitemap', ['exception' => $e]);
+    }
+}
+
+public function appendToSitemap($post_name, $post_date)
+{
+    $sitemapPath = public_path('../public_html/assets/sitemap.xml');
+    
+    // Check if the sitemap file exists
+    if (!file_exists($sitemapPath)) {
+        // Call a function to create the full sitemap
+        $this->generateSitemapAndRespond();
+    }
+
+    // Load the existing sitemap and append the new post
+    $sitemap = Sitemap::load($sitemapPath);
+    $sitemap->add(
+        Url::create("/post/{$post_name}")
+            ->setLastModificationDate(Carbon::parse($post_date))
+            ->setChangeFrequency('daily') // Set change frequency
+            ->setPriority(1.0) // Set priority
+    );
+    
+
+    // Save the updated sitemap
+    $sitemap->writeToFile($sitemapPath);
+
+}
+
 
 
      
